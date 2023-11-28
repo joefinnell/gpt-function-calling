@@ -1,89 +1,13 @@
 import json
-import os
-import requests
 from dotenv import load_dotenv
 from openai import OpenAI
+from modules.Calendly import CalendlyAPI
 
 load_dotenv()
 
 client = OpenAI()
 
-BASE_URL = "https://api.calendly.com"
-API_KEY = os.environ.get("CALENDLY_API_TOKEN")
-
-
-def build_url(endpoint):
-    return BASE_URL + endpoint
-
-def get_headers():
-    return {
-        "Authorization": f"Bearer {API_KEY}",
-        "Content-Type": "application/json"
-    }
-
-def get_user_schedule_availability():
-    """Get a user's schedule availability"""
-    url = build_url("/user_availability_schedules")
-    params = {
-        "user": get_current_user_uri(),
-    }
-    try:
-        response = requests.get(url, headers=get_headers(), params=params)
-        response.raise_for_status()  # Raise an exception for 4xx and 5xx status codes
-        return response.json()
-    except requests.exceptions.RequestException as e:
-        print(f"Error: {e}")
-        return None
-
-def create_scheduling_link():
-    """Get a scheduling link"""
-    url = build_url("/scheduling_links")
-    payload = {
-        "max_event_count": 1,
-        "owner": get_event_uri(),
-        "owner_type": "EventType"
-    }
-    try:
-        response = requests.post(url, headers=get_headers(), json=payload)
-        response.raise_for_status()  # Raise an exception for 4xx and 5xx status codes
-        return response.json()["resource"]["booking_url"]
-    except requests.exceptions.RequestException as e:
-        print(f"Error: {e}")
-        return None
-
-
-def get_event_uri():
-    """Get the URI for the test event"""
-    event_types = list_users_event_types()['collection']
-    for event_type in event_types:
-        if event_type['name'] == 'Test Event':
-            return event_type['uri']
-    return None
-
-def list_users_event_types():
-    """List a user's event types"""
-    url = build_url("/event_types")
-    params = {
-        "user": get_current_user_uri(),
-    }
-    try:
-        response = requests.get(url, headers=get_headers(), params=params)
-        response.raise_for_status()  # Raise an exception for 4xx and 5xx status codes
-        return response.json()
-    except requests.exceptions.RequestException as e:
-        print(f"Error: {e}")
-        return None
-
-def get_current_user_uri():
-    """Get the URI for the current user"""
-    url = build_url("/users/me")
-    try:
-        response = requests.get(url, headers=get_headers())
-        response.raise_for_status()  # Raise an exception for 4xx and 5xx status codes
-        return response.json()["resource"]["uri"]
-    except requests.exceptions.RequestException as e:
-        print(f"Error: {e}")
-        return None
+calendly = CalendlyAPI()
 
 def get_tools():
     return [
@@ -133,8 +57,8 @@ def dummy_function():
 
 def get_available_functions():
     return {
-            "get_user_schedule_availability": get_user_schedule_availability,
-            "create_scheduling_link": create_scheduling_link,
+            "get_user_schedule_availability": calendly.get_user_schedule_availability,
+            "create_scheduling_link": calendly.create_scheduling_link,
             "dummy_function": dummy_function,
         } 
 

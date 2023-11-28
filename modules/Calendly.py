@@ -2,6 +2,8 @@ import os
 import requests
 from dotenv import load_dotenv
 
+load_dotenv()
+
 BASE_URL = "https://api.calendly.com"
 API_KEY = os.environ.get("CALENDLY_API_TOKEN")
 
