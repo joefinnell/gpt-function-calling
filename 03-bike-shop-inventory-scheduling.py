@@ -1,93 +1,21 @@
 import json
 import os
-import requests
+from modules.Calendly import CalendlyAPI
+from modules.project3.Inventory import Inventory
 from dotenv import load_dotenv
 from openai import OpenAI
 
 load_dotenv()
 
 client = OpenAI()
+calendly = CalendlyAPI()
+inventory = Inventory()
 
-BASE_URL = "https://api.calendly.com"
-API_KEY = os.environ.get("CALENDLY_API_TOKEN")
-
-
-def build_url(endpoint):
-    return BASE_URL + endpoint
-
-def get_headers():
-    return {
-        "Authorization": f"Bearer {API_KEY}",
-        "Content-Type": "application/json"
-    }
-
-def get_user_schedule_availability():
-    """Get a user's schedule availability"""
-    url = build_url("/user_availability_schedules")
-    params = {
-        "user": get_current_user_uri(),
-    }
-    try:
-        response = requests.get(url, headers=get_headers(), params=params)
-        response.raise_for_status()  # Raise an exception for 4xx and 5xx status codes
-        return response.json()
-    except requests.exceptions.RequestException as e:
-        print(f"Error: {e}")
-        return None
-
-def create_scheduling_link():
-    """Get a scheduling link"""
-    url = build_url("/scheduling_links")
-    payload = {
-        "max_event_count": 1,
-        "owner": get_event_uri(),
-        "owner_type": "EventType"
-    }
-    try:
-        response = requests.post(url, headers=get_headers(), json=payload)
-        response.raise_for_status()  # Raise an exception for 4xx and 5xx status codes
-        return response.json()["resource"]["booking_url"]
-    except requests.exceptions.RequestException as e:
-        print(f"Error: {e}")
-        return None
-
-
-def get_event_uri():
-    """Get the URI for the test event"""
-    event_types = list_users_event_types()['collection']
-    for event_type in event_types:
-        if event_type['name'] == 'Test Event':
-            return event_type['uri']
-    return None
-
-def list_users_event_types():
-    """List a user's event types"""
-    url = build_url("/event_types")
-    params = {
-        "user": get_current_user_uri(),
-    }
-    try:
-        response = requests.get(url, headers=get_headers(), params=params)
-        response.raise_for_status()  # Raise an exception for 4xx and 5xx status codes
-        return response.json()
-    except requests.exceptions.RequestException as e:
-        print(f"Error: {e}")
-        return None
-
-def get_current_user_uri():
-    """Get the URI for the current user"""
-    url = build_url("/users/me")
-    try:
-        response = requests.get(url, headers=get_headers())
-        response.raise_for_status()  # Raise an exception for 4xx and 5xx status codes
-        return response.json()["resource"]["uri"]
-    except requests.exceptions.RequestException as e:
-        print(f"Error: {e}")
-        return None
-
-
-def get_bike_inventory():
-    {}
+inventory.add_bike("Kona", "Model X", 5)
+inventory.add_bike("Specialized", "Model Y", 3)
+inventory.add_bike("Specialized", "Model Z", 3)
+inventory.add_bike("Specialized", "Stump Jumper", 3)
+inventory.add_bike("Transition", "Model Z", 2)
 
 def get_tools():
     return [
@@ -120,8 +48,67 @@ def get_tools():
         {
             "type": "function",
             "function": {
-                "name": "dummy_function",
-                "description": "A dummy function that does nothing",
+                "name": "purchase_bike",
+                "description": "Purchases a bike that the user wishes to purchase",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "brand":{
+                            "type": "string",
+                            "description": "The brand name of the bike"
+                        },
+                        "model": {
+                            "type": "string",
+                            "description": "The model of the bike"
+                        },
+                    },
+                    "required": ["brand", "model"],
+                },
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "get_available_quantity",
+                "description": "Gets the available quantity for a bike brand and model",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "brand":{
+                            "type": "string",
+                            "description": "The brand name of the bike"
+                        },
+                        "model": {
+                            "type": "string",
+                            "description": "The model of the bike"
+                        },
+                    },
+                    "required": ["brand", "model"],
+                },
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "get_available_models",
+                "description": "Gets the available models for a bike brand.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "brand":{
+                            "type": "string",
+                            "description": "The brand name of the bike"
+                        },
+                    },
+                    "required": ["brand"],
+                },
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "get_available_brands",
+                "description": "Gets all the brands made that are available at the store.",
                 "parameters": {
                     "type": "object",
                     "properties": {
@@ -132,38 +119,41 @@ def get_tools():
         },
     ]
 
-def dummy_function():
-    return "dummy function"
-
 def get_available_functions():
     return {
-            "get_user_schedule_availability": get_user_schedule_availability,
-            "create_scheduling_link": create_scheduling_link,
-            "dummy_function": dummy_function,
+            "get_user_schedule_availability": calendly.get_user_schedule_availability,
+            "create_scheduling_link": calendly.create_scheduling_link,
+            "purchase_bike": inventory.purchase_bike,
+            "get_available_quantity": inventory.get_available_quantity,
+            "get_available_models": inventory.get_available_models,
+            "get_available_brands": inventory.get_available_brands,
         } 
 
 def run_conversation():
     # Step 1: send the conversation and available functions to the model
-    messages = [{"role": "user", "content": "Can we set up a meeting?"}]
+    messages = [
+        {"role": "system", "content": "You are a bike shop owner who is working with a customer to purchase a bike."},
+        {"role": "user", "content": "What models do you have for Specialized?"}
+    ]
     response = client.chat.completions.create(
         model="gpt-3.5-turbo-1106",
         messages=messages,
         tools=get_tools(),
-        tool_choice="auto",  # auto is default, but we'll be explicit
+        tool_choice="auto",
     )
+
     response_message = response.choices[0].message
     tool_calls = response_message.tool_calls
-    # Step 2: check if the model wanted to call a function
+
     if tool_calls:
-        # Step 3: call the function
-        # Note: the JSON response may not always be valid; be sure to handle errors
         available_functions = get_available_functions() 
         messages.append(response_message)  # extend conversation with assistant's reply
-        # Step 4: send the info for each function call and function response to the model
+
         for tool_call in tool_calls:
             function_name = tool_call.function.name
             function_to_call = available_functions[function_name]
-            function_response = function_to_call()
+            arguments = json.loads(tool_call.function.arguments)
+            function_response = function_to_call(**arguments)
             print(function_response)
 
 run_conversation()

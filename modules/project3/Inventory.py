@@ -25,3 +25,6 @@ class Inventory:
         if brand in self.inventory:
             return list(self.inventory[brand].keys())
         return []
+
+    def get_available_brands(self):
+        return list(self.inventory.keys())
