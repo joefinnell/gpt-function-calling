@@ -1,7 +1,8 @@
+import datetime
 class Workout:
-    def __init__(self, name, date, exercises = []):
+    def __init__(self, name, exercises = []):
         self.name = name
-        self.date = date
+        self.date = datetime.date.today().strftime("%Y-%m-%d")
         self.exercises = exercises
 
     def add_exercise(self, exercise):
