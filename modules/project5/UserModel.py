@@ -25,6 +25,12 @@ class UserModel:
         workouts_ref = user_ref.collection('workouts').document()
         workouts_ref.set(workout.tojson())
 
+    def add_suggested_workout(self, user_id, workout):
+        # Add a new suggested workout document to the user's suggested workouts subcollection
+        user_ref = self.db.collection('users').document(user_id)
+        workouts_ref = user_ref.collection('suggested_workouts').document()
+        workouts_ref.set(workout.tojson())
+
     def get_user_workouts(self, user_id):
         # Get all workouts for a specific user, sorted by date
         user_ref = self.db.collection('users').document(user_id)

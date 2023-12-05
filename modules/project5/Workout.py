@@ -1,4 +1,12 @@
 import datetime
+
+def get_workout(workout_json):
+    workout = Workout(workout_json['name'])
+    for exercise in workout_json['exercises']:
+        workout.add_exercise(Exercise(exercise['name'], exercise['sets'], exercise['reps'], exercise['weights'], exercise['notes']))
+    return workout
+
+
 class Workout:
     def __init__(self, name, exercises = []):
         self.name = name
@@ -31,7 +39,7 @@ class Workout:
 
     def __str__(self):
         return "Workout: " + self.name + " Date: " + self.date
-    
+
     def tojson(self):
         return {
             'name': self.name,
