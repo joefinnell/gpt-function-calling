@@ -1,13 +1,15 @@
 from modules.project5.UserModel import UserModel
 from modules.project5.Workout import get_workout
 from modules.project5.ExtractWorkout import extract_workout, create_workout
+from modules.project5.SpeechExtraction import get_text_from_speech
 import json
 
 user_model = UserModel()
 user_model.create_user('joe.finnell', 'Joe', 'Finnell')
 
 # Add a workout to the user's workouts
-gpt_workout_json = extract_workout("I did squats for 5 sets of 5 at 325 pounds it was heavy, I did bench for 6 by 6 at 225 it felt okay, curls 6 sets of 8 reps at 30lbs each arm")
+workout_text = get_text_from_speech('/Users/joe.finnell/git/gpt-function-calling/audio/workout.m4a')
+gpt_workout_json = extract_workout(workout_text)
 if gpt_workout_json:
     workout = get_workout(gpt_workout_json)
     user_model.add_workout('joe.finnell', workout)
